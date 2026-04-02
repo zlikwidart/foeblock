@@ -21,12 +21,20 @@ function parseManualList(raw) {
 }
 
 function storageGet(defaults) {
-  return new Promise((resolve) => API.storage.sync.get(defaults, resolve));
+  const out = API.storage.sync.get(defaults);
+
+  if (out && typeof out.then === 'function') {
+    return out;
+  }
+
+  return new Promise((resolve) => {
+    API.storage.sync.get(defaults, (result) => resolve(result || defaults));
+  });
 }
 
 async function getStoredManualFoes() {
-  const result = await storageGet({ [STORAGE_KEY]: '' });
-  return new Set(parseManualList(result[STORAGE_KEY]).map(normalizeName));
+  const result = (await storageGet({ [STORAGE_KEY]: '' })) || {};
+  return new Set(parseManualList(result[STORAGE_KEY] || '').map(normalizeName));
 }
 
 async function fetchDocument(url) {
