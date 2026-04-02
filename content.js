@@ -1,4 +1,6 @@
 const API = globalThis.browser || globalThis.chrome;
+console.debug('[STLtoday foe filter] content.js version 3 loaded');
+
 const STORAGE_KEY = 'manualFoeUsernames';
 const DEFAULT_ZEBRA_PATHS = [
   '/forums/ucp.php?i=zebra&mode=foes',
@@ -21,11 +23,12 @@ function parseManualList(raw) {
 }
 
 function storageGet(defaults) {
-  const out = API.storage.sync.get(defaults);
-
-  if (out && typeof out.then === 'function') {
-    return out;
-  }
+  try {
+    const out = API.storage.sync.get(defaults);
+    if (out && typeof out.then === 'function') {
+      return out;
+    }
+  } catch (e) {}
 
   return new Promise((resolve) => {
     API.storage.sync.get(defaults, (result) => resolve(result || defaults));
@@ -65,19 +68,6 @@ function extractFoesFromDoc(doc) {
   return names;
 }
 
-  if (!names.size) {
-    for (const panel of doc.querySelectorAll('.panel, fieldset, .inner')) {
-      if (!/foe/i.test(panel.textContent || '')) continue;
-      for (const a of panel.querySelectorAll('a[href*="memberlist.php"], a[href*="mode=viewprofile"]')) {
-        const text = normalizeName(a.textContent);
-        if (text) names.add(text);
-      }
-    }
-  }
-
-  return names;
-}
-
 async function loadFoes() {
   const combined = await getStoredManualFoes();
 
@@ -98,8 +88,9 @@ async function loadFoes() {
 }
 
 function getTopicRows() {
-  return [...document.querySelectorAll('ul.topiclist.topics > li.row')]
-    .filter((row) => !row.classList.contains('header'));
+  return [...document.querySelectorAll('ul.topiclist.topics > li.row')].filter(
+    (row) => !row.classList.contains('header')
+  );
 }
 
 function extractStarterName(row) {
@@ -118,10 +109,10 @@ function extractStarterName(row) {
   const compact = listInner.textContent.replace(/\s+/g, ' ').trim();
 
   let match = compact.match(/\bby\s+(.+?)\s+»\s+/i);
-  if (match?.[1]) return normalizeName(match[1]);
+  if (match && match[1]) return normalizeName(match[1]);
 
   match = compact.match(/\bby\s+(.+?)\s+(?:Replies|Views|Last\s+post)\b/i);
-  if (match?.[1]) return normalizeName(match[1]);
+  if (match && match[1]) return normalizeName(match[1]);
 
   return '';
 }
