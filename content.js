@@ -46,14 +46,13 @@ async function fetchDocument(url) {
 
 function extractFoesFromDoc(doc) {
   const names = new Set();
+
   const selectors = [
     '.memberlist a.username',
     '.memberlist a.username-coloured',
     '#foes a.username',
     '#foes a.username-coloured',
-    'select[name="foes[]"] option',
-    '.panel a.username',
-    '.panel a.username-coloured'
+    'select[name="foes[]"] option'
   ];
 
   for (const selector of selectors) {
@@ -62,6 +61,9 @@ function extractFoesFromDoc(doc) {
       if (text) names.add(text);
     }
   }
+
+  return names;
+}
 
   if (!names.size) {
     for (const panel of doc.querySelectorAll('.panel, fieldset, .inner')) {
@@ -101,42 +103,47 @@ function getTopicRows() {
 }
 
 function extractStarterName(row) {
-  const textSources = [
-    row.querySelector('.list-inner')?.textContent || '',
-    row.textContent || ''
+  const listInner = row.querySelector('.list-inner');
+  if (!listInner) return '';
+
+  const profileLinks = [
+    ...listInner.querySelectorAll('a[href*="memberlist.php"], a[href*="mode=viewprofile"]')
   ];
 
-  for (const raw of textSources) {
-    const compact = raw.replace(/\s+/g, ' ').trim();
-
-    let match = compact.match(/\bby\s+(.+?)\s+»\s+/i);
-    if (match?.[1]) return normalizeName(match[1]);
-
-    match = compact.match(/\bby\s+(.+?)\s+(?:Replies|Views|Last\s+post)\b/i);
-    if (match?.[1]) return normalizeName(match[1]);
+  for (const link of profileLinks) {
+    const text = normalizeName(link.textContent);
+    if (text) return text;
   }
 
-  const authorMeta = row.querySelector('.responsive-hide.left-box, .topic-poster, .list-inner');
-  if (authorMeta) {
-    const compact = authorMeta.textContent.replace(/\s+/g, ' ').trim();
-    const match = compact.match(/\bby\s+(.+?)\s+»/i);
-    if (match?.[1]) return normalizeName(match[1]);
-  }
+  const compact = listInner.textContent.replace(/\s+/g, ' ').trim();
+
+  let match = compact.match(/\bby\s+(.+?)\s+»\s+/i);
+  if (match?.[1]) return normalizeName(match[1]);
+
+  match = compact.match(/\bby\s+(.+?)\s+(?:Replies|Views|Last\s+post)\b/i);
+  if (match?.[1]) return normalizeName(match[1]);
 
   return '';
 }
 
 function hideFoeThreads(foes) {
   let hidden = 0;
+
   for (const row of getTopicRows()) {
     const starter = extractStarterName(row);
+    const title = row.querySelector('.topictitle')?.textContent?.trim() || '(no title)';
+
+    console.debug('[STLtoday foe filter] row:', { title, starter });
+
     if (!starter) continue;
+
     if (foes.has(starter)) {
       row.style.display = 'none';
       row.dataset.foeThreadHidden = 'true';
       hidden += 1;
     }
   }
+
   return hidden;
 }
 
