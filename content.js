@@ -59,41 +59,37 @@ async function fetchDocument(url) {
   return { response, doc, text };
 }
 
-function extractFoesFromDoc(doc) {
+function decodeHtmlEntities(str) {
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = str;
+  return textarea.value;
+}
+
+function extractFoesFromDoc(doc, rawHtml = '') {
   const names = new Set();
-  const blocked = new Set([
-    'members',
-    'the team',
-    'profile',
-    'find a member',
-    'faq',
-    'home',
-    'forums',
-    'notifications',
-    'private messages'
-  ]);
 
-  // Best case: actual foes select box
-  for (const opt of doc.querySelectorAll('select[name="foes[]"] option')) {
+  // DOM-based parse first
+  for (const opt of doc.querySelectorAll('select option')) {
     const text = normalizeName(opt.textContent);
-    if (text && !blocked.has(text)) names.add(text);
+    if (text) names.add(text);
   }
 
-  // phpBB zebra/memberlist rows
-  for (const row of doc.querySelectorAll('.memberlist li.row, .zebra li.row, #memberlist li.row, #foes li.row')) {
-    const link = row.querySelector('a.username, a.username-coloured, a[href*="memberlist.php"], a[href*="mode=viewprofile"]');
-    const text = normalizeName(link?.textContent || '');
-    if (text && !blocked.has(text)) names.add(text);
-  }
+  // Raw HTML fallback if DOM parse found nothing
+  if (!names.size && rawHtml) {
+    const selectBlocks = [
+      ...rawHtml.matchAll(/<select[\s\S]*?>([\s\S]*?)<\/select>/gi)
+    ];
 
-  // Fallback: only search inside forms/panels that actually mention foes
-  for (const container of doc.querySelectorAll('form, fieldset, .panel, .inner')) {
-    const hay = normalizeName(container.textContent || '');
-    if (!hay.includes('foe')) continue;
-
-    for (const link of container.querySelectorAll('a.username, a.username-coloured, a[href*="memberlist.php"], a[href*="mode=viewprofile"]')) {
-      const text = normalizeName(link.textContent);
-      if (text && !blocked.has(text)) names.add(text);
+    for (const block of selectBlocks) {
+      const inner = block[1] || '';
+      for (const opt of inner.matchAll(/<option[^>]*>([\s\S]*?)<\/option>/gi)) {
+        const text = normalizeName(
+          decodeHtmlEntities(
+            String(opt[1] || '').replace(/<[^>]+>/g, '')
+          )
+        );
+        if (text) names.add(text);
+      }
     }
   }
 
@@ -123,7 +119,7 @@ async function loadFoes() {
         continue;
       }
 
-      const autoFoes = extractFoesFromDoc(doc);
+      const autoFoes = extractFoesFromDoc(doc, text);
       if (autoFoes.size) {
         for (const name of autoFoes) combined.add(name);
         break;
