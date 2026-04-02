@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "STLtoday Foe Thread Filter",
+  "version": "1.0.0",
+  "description": "Hides forum threads on STLtoday started by users on your foe list.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://interact.stltoday.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://interact.stltoday.com/forums/viewforum.php*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "options.html"
+}
