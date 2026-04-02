@@ -1,56 +1,24 @@
 # STLtoday Foe Thread Filter
 
-Hides topic rows on STLtoday's phpBB forum when the thread starter is on your foe list.
+Hides thread listings on the STLtoday phpBB forum when the thread starter is on your foe list or your manual block list.
 
-## Browser support
+## Features
+- Automatically reads your phpBB foe list from the STLtoday user control panel
+- Lets you manually add usernames in the options page
+- Hides matching threads on forum listing pages
 
-- Chrome / Edge / Brave / other Chromium browsers
-- Firefox
+## Privacy
+This extension does not send data to any external server. Usernames are read from STLtoday while you are logged in and manual settings are stored in browser extension storage.
 
-This is a single Manifest V3 WebExtension codebase intended to work in both Chrome-based browsers and Firefox.
+## Local install
 
-## What it does
-
-- Runs on `https://interact.stltoday.com/forums/viewforum.php*`
-- Tries to read your phpBB foe list automatically
-- Lets you manually enter fallback usernames in the options page
-- Hides matching thread rows from the forum listing
-
-## Install locally
-
-### Chrome / Edge
-1. Download or clone this repo.
-2. Open `chrome://extensions`.
-3. Enable **Developer mode**.
-4. Click **Load unpacked**.
-5. Select this folder.
+### Chrome / Edge / Brave
+1. Open `chrome://extensions`
+2. Turn on **Developer mode**
+3. Click **Load unpacked**
+4. Select this extension folder
 
 ### Firefox
-#### Temporary install
-1. Download or clone this repo.
-2. Open `about:debugging#/runtime/this-firefox`.
-3. Click **Load Temporary Add-on**.
-4. Select `manifest.json` in this folder.
-
-#### Permanent install
-For a normal one-click Firefox install, the extension would need to be packaged and signed through Mozilla Add-ons.
-
-## Use
-
-1. Log into STLtoday forums.
-2. Open the extension options page if you want to add manual fallback names.
-3. Visit a forum page such as:
-   - `https://interact.stltoday.com/forums/viewforum.php?f=10`
-4. Refresh the page.
-
-## Repo layout
-
-- `manifest.json`
-- `content.js`
-- `options.html`
-- `options.js`
-
-## Notes
-
-- Firefox and Chrome share most WebExtension APIs, but there are still some cross-browser differences.
-- This extension uses only packaged local code.
+1. Open `about:debugging#/runtime/this-firefox`
+2. Click **Load Temporary Add-on**
+3. Select `manifest.json`

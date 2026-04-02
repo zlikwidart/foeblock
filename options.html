@@ -2,51 +2,52 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>STLtoday Foe Thread Filter</title>
+  <title>STLtoday Foe Thread Filter Options</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
+    :root { color-scheme: light dark; }
     body {
-      font-family: Arial, sans-serif;
-      max-width: 700px;
-      margin: 40px auto;
-      padding: 0 16px;
-      line-height: 1.4;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 24px;
+      max-width: 760px;
+      line-height: 1.45;
     }
+    h1 { margin-top: 0; font-size: 1.5rem; }
+    p { margin: 0 0 12px; }
     textarea {
       width: 100%;
-      min-height: 220px;
-      font: inherit;
-      padding: 10px;
+      min-height: 260px;
       box-sizing: border-box;
-    }
-    button {
-      margin-top: 12px;
-      padding: 10px 16px;
       font: inherit;
-      cursor: pointer;
+      padding: 12px;
+      margin: 8px 0 12px;
     }
-    .status {
-      margin-top: 12px;
-      font-weight: bold;
+    .row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
     }
-    code {
-      background: #f2f2f2;
-      padding: 2px 4px;
-    }
+    button { font: inherit; padding: 10px 16px; cursor: pointer; }
+    #status { min-height: 1.5em; opacity: 0.85; }
+    .note { opacity: 0.8; font-size: 0.95rem; }
   </style>
 </head>
 <body>
   <h1>STLtoday Foe Thread Filter</h1>
-  <p>
-    The extension tries to read your phpBB foe list automatically. If that page layout changes or is unavailable,
-    you can enter usernames here as a fallback. Use one username per line or separate them with commas.
-  </p>
-  <textarea id="foes" placeholder="Example:\nuser1\nuser2"></textarea>
-  <br>
-  <button id="save">Save</button>
-  <div class="status" id="status"></div>
-  <p>
-    After saving, refresh any open <code>viewforum.php</code> page.
-  </p>
+  <p>Enter extra usernames to hide in addition to the names from your forum foe list.</p>
+  <p class="note">Use one username per line or separate names with commas.</p>
+
+  <label for="manualFoes"><strong>Manual block list</strong></label>
+  <textarea id="manualFoes" spellcheck="false" placeholder="Example:
+leedog68
+some_other_user"></textarea>
+
+  <div class="row">
+    <button id="saveButton" type="button">Save</button>
+    <span id="status" aria-live="polite"></span>
+  </div>
+
   <script src="options.js"></script>
 </body>
 </html>
