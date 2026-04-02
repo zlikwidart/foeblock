@@ -41,30 +41,63 @@ async function getStoredManualFoes() {
 }
 
 async function fetchDocument(url) {
-  const response = await fetch(url, { credentials: 'include' });
-  if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
+  const response = await fetch(url, {
+    credentials: 'include',
+    redirect: 'follow'
+  });
+
   const text = await response.text();
-  return new DOMParser().parseFromString(text, 'text/html');
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+
+  console.debug('[STLtoday foe filter] fetched:', {
+    requestedUrl: url,
+    finalUrl: response.url,
+    status: response.status,
+    title: doc.title
+  });
+
+  return { response, doc, text };
 }
 
 function extractFoesFromDoc(doc) {
   const names = new Set();
+  const blocked = new Set([
+    'members',
+    'the team',
+    'profile',
+    'find a member',
+    'faq',
+    'home',
+    'forums',
+    'notifications',
+    'private messages'
+  ]);
 
-  const selectors = [
-    '.memberlist a.username',
-    '.memberlist a.username-coloured',
-    '#foes a.username',
-    '#foes a.username-coloured',
-    'select[name="foes[]"] option'
-  ];
+  // Best case: actual foes select box
+  for (const opt of doc.querySelectorAll('select[name="foes[]"] option')) {
+    const text = normalizeName(opt.textContent);
+    if (text && !blocked.has(text)) names.add(text);
+  }
 
-  for (const selector of selectors) {
-    for (const el of doc.querySelectorAll(selector)) {
-      const text = normalizeName(el.textContent);
-      if (text) names.add(text);
+  // phpBB zebra/memberlist rows
+  for (const row of doc.querySelectorAll('.memberlist li.row, .zebra li.row, #memberlist li.row, #foes li.row')) {
+    const link = row.querySelector('a.username, a.username-coloured, a[href*="memberlist.php"], a[href*="mode=viewprofile"]');
+    const text = normalizeName(link?.textContent || '');
+    if (text && !blocked.has(text)) names.add(text);
+  }
+
+  // Fallback: only search inside forms/panels that actually mention foes
+  for (const container of doc.querySelectorAll('form, fieldset, .panel, .inner')) {
+    const hay = normalizeName(container.textContent || '');
+    if (!hay.includes('foe')) continue;
+
+    for (const link of container.querySelectorAll('a.username, a.username-coloured, a[href*="memberlist.php"], a[href*="mode=viewprofile"]')) {
+      const text = normalizeName(link.textContent);
+      if (text && !blocked.has(text)) names.add(text);
     }
   }
 
+  console.debug('[STLtoday foe filter] auto foes found:', [...names]);
   return names;
 }
 
@@ -73,7 +106,23 @@ async function loadFoes() {
 
   for (const path of DEFAULT_ZEBRA_PATHS) {
     try {
-      const doc = await fetchDocument(new URL(path, location.origin).href);
+      const { response, doc, text } = await fetchDocument(new URL(path, location.origin).href);
+
+      // Logged out / redirected / access failure detection
+      const finalUrl = response.url || '';
+      const pageText = normalizeName(text);
+
+      if (
+        finalUrl.includes('login') ||
+        pageText.includes('you need to login') ||
+        pageText.includes('you need to log in') ||
+        pageText.includes('login to') ||
+        pageText.includes('sign in')
+      ) {
+        console.debug('[STLtoday foe filter] foe page appears to require login:', finalUrl);
+        continue;
+      }
+
       const autoFoes = extractFoesFromDoc(doc);
       if (autoFoes.size) {
         for (const name of autoFoes) combined.add(name);
@@ -97,22 +146,26 @@ function extractStarterName(row) {
   const listInner = row.querySelector('.list-inner');
   if (!listInner) return '';
 
-  const profileLinks = [
-    ...listInner.querySelectorAll('a[href*="memberlist.php"], a[href*="mode=viewprofile"]')
-  ];
+  // Work from a clone so we can strip mobile/extra UI that may contain last-post info
+  const clone = listInner.cloneNode(true);
 
-  for (const link of profileLinks) {
-    const text = normalizeName(link.textContent);
-    if (text) return text;
+  // Remove title, pagination, icons, and responsive/mobile blocks that can contain last-post text
+  clone.querySelectorAll(
+    '.topictitle, .pagination, .responsive-show, .topic-status, .icon, .rh_tag'
+  ).forEach((el) => el.remove());
+
+  // Prefer the first username that appears in the remaining author/date line
+  const authorLink = clone.querySelector('a.username, a.username-coloured, a[href*="memberlist.php"], a[href*="mode=viewprofile"]');
+  if (authorLink) {
+    return normalizeName(authorLink.textContent);
   }
 
-  const compact = listInner.textContent.replace(/\s+/g, ' ').trim();
-
-  let match = compact.match(/\bby\s+(.+?)\s+»\s+/i);
-  if (match && match[1]) return normalizeName(match[1]);
-
-  match = compact.match(/\bby\s+(.+?)\s+(?:Replies|Views|Last\s+post)\b/i);
-  if (match && match[1]) return normalizeName(match[1]);
+  // Fallback: parse "by NAME » DATE" from the stripped text
+  const compact = clone.textContent.replace(/\s+/g, ' ').trim();
+  const match = compact.match(/\bby\s+(.+?)\s+»\s+/i);
+  if (match && match[1]) {
+    return normalizeName(match[1]);
+  }
 
   return '';
 }
